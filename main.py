@@ -17,24 +17,24 @@ def run():
     config = load_config(args.config)
     protocol = config.get("protocol", "").lower()
 
-    collector = None
     tasks = []
 
     if protocol == "cosmos":
         from collector import cosmos
-        collector = cosmos
         tasks.append(cosmos.metric_updater(config))
 
     elif protocol == "evm":
         from collector import evm
-        collector = evm
         tasks.append(evm.metric_updater(config))
+
+    elif protocol == "net_observer":
+        from collector import net_observer
+        tasks.append(net_observer.metric_updater(config))
 
     else:
         print(f"[!] Protocol '{protocol}' not supported for metrics collection.")
         print("[~] Only binary version metric will be exposed.")
 
-    # Always run binary version metric
     tasks.append(report_binary_version_daily(config))
 
     print(f"Exporter running on :{config['metrics_port']}/metrics using config: {args.config}")
