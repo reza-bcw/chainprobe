@@ -1,64 +1,68 @@
-protocol = "net_observer"
+protocol = "other"
 metrics_port = 3000
 
+[binaries]
+"snarkos" = "/etc/systemd/system/snarkos.service"
+
+[net_observer]
+enabled = true
 provider = "NirvanaLab"
 region = "San"
 instance = "zenrock-new"
-
 interval_seconds = 30
 mtr_count = 5
 mtr_max_hops = 30
 mtr_timeout_seconds = 15
 
-[[targets]]
+[[net_observer.targets]]
 address = "8.8.8.8"
 class_name = "public"
 location = "California"
 provider = "google"
 
-[[targets]]
+[[net_observer.targets]]
 address = "1.1.1.1"
 class_name = "public"
 location = "Queensland"
 provider = "cloudflare"
 
-[[targets]]
+[[net_observer.targets]]
 address = "34.86.142.37"
 class_name = "cross_region"
 location = "Washington"
 provider = "google"
 
-[[targets]]
+[[net_observer.targets]]
 address = "185.209.179.155"
 class_name = "critical"
 location = "NYC"
 provider = "latitude"
 
-[[targets]]
+[[net_observer.targets]]
 address = "103.219.171.153"
 class_name = "critical"
 location = "Frankfurt"
 provider = "latitude"
 
-[[targets]]
+[[net_observer.targets]]
 address = "64.34.85.31"
 class_name = "critical"
 location = "Frankfurt2"
 provider = "latitude"
 
-[[targets]]
+[[net_observer.targets]]
 address = "57.129.83.10"
 class_name = "critical"
 location = "Limburg"
 provider = "ovh"
 
-[[targets]]
+[[net_observer.targets]]
 address = "67.213.127.51"
 class_name = "critical"
 location = "Amsterdam"
 provider = "latitude"
 
-[[targets]]
+[[net_observer.targets]]
 address = "185.26.9.113"
 class_name = "critical"
 location = "ASH"
