@@ -1,5 +1,5 @@
 protocol = "net_observer"
-metrics_port = 9400
+metrics_port = 3000
 
 provider = "NirvanaLab"
 region = "San"
