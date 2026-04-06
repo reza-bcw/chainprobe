@@ -153,10 +153,10 @@ def clear_dynamic_metrics() -> None:
         gauge.clear()
 
 
-def load_targets(config: dict[str, Any]) -> list[TargetSpec]:
-    raw_targets = config.get("targets", [])
+def load_targets(net_cfg: dict[str, Any]) -> list[TargetSpec]:
+    raw_targets = net_cfg.get("targets", [])
     if not isinstance(raw_targets, list):
-        raise RuntimeError("config.toml: 'targets' must be an array of tables")
+        raise RuntimeError("config.toml: 'net_observer.targets' must be an array of tables")
 
     targets: list[TargetSpec] = []
     seen: set[str] = set()
@@ -180,7 +180,7 @@ def load_targets(config: dict[str, Any]) -> list[TargetSpec]:
         )
 
     if not targets:
-        raise RuntimeError("No targets found in config.toml under [[targets]]")
+        raise RuntimeError("No targets found in config.toml under [[net_observer.targets]]")
 
     return targets
 
@@ -285,17 +285,17 @@ def base_labels(target: TargetSpec) -> dict[str, str]:
     }
 
 
-async def metric_updater(config: dict[str, Any]):
-    provider = str(config.get("provider", "unknown"))
-    region = str(config.get("region", "unknown"))
-    instance = str(config.get("instance", "unknown"))
+async def metric_updater(net_cfg: dict[str, Any]):
+    provider = str(net_cfg.get("provider", "unknown"))
+    region = str(net_cfg.get("region", "unknown"))
+    instance = str(net_cfg.get("instance", "unknown"))
 
-    interval_seconds = int(config.get("interval_seconds", 30))
-    mtr_count = int(config.get("mtr_count", 5))
-    mtr_max_hops = int(config.get("mtr_max_hops", 30))
-    mtr_timeout_seconds = int(config.get("mtr_timeout_seconds", 15))
+    interval_seconds = int(net_cfg.get("interval_seconds", 30))
+    mtr_count = int(net_cfg.get("mtr_count", 5))
+    mtr_max_hops = int(net_cfg.get("mtr_max_hops", 30))
+    mtr_timeout_seconds = int(net_cfg.get("mtr_timeout_seconds", 15))
 
-    targets = load_targets(config)
+    targets = load_targets(net_cfg)
     history: dict[str, RouteHistory] = {}
 
     logger.info(
