@@ -19,6 +19,7 @@ def run():
 
     tasks = []
 
+    # Primary chain protocol collector
     if protocol == "cosmos":
         from collector import cosmos
         tasks.append(cosmos.metric_updater(config))
@@ -27,14 +28,21 @@ def run():
         from collector import evm
         tasks.append(evm.metric_updater(config))
 
-    elif protocol == "net_observer":
-        from collector import net_observer
-        tasks.append(net_observer.metric_updater(config))
+    elif protocol in ("other", ""):
+        print("[~] No primary chain collector enabled.")
 
     else:
         print(f"[!] Protocol '{protocol}' not supported for metrics collection.")
-        print("[~] Only binary version metric will be exposed.")
+        print("[~] Skipping primary chain collector.")
 
+    # Optional net observer collector
+    net_observer_cfg = config.get("net_observer", {})
+    if isinstance(net_observer_cfg, dict) and net_observer_cfg.get("enabled", False):
+        from collector import net_observer
+        tasks.append(net_observer.metric_updater(net_observer_cfg))
+        print("[+] net_observer collector enabled")
+
+    # Always run binary version metric
     tasks.append(report_binary_version_daily(config))
 
     print(f"Exporter running on :{config['metrics_port']}/metrics using config: {args.config}")
