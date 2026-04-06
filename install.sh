@@ -15,61 +15,6 @@ detect_instance() {
   printf '%s' "$hn"
 }
 
-detect_region_from_hostname() {
-  local hn
-  hn="$(hostname -s 2>/dev/null || hostname)"
-  hn="$(printf '%s' "$hn" | tr '[:upper:]' '[:lower:]')"
-
-  case "$hn" in
-    *san* ) echo "San" ;;
-    *fra*|*frank* ) echo "Frank" ;;
-    *nyc* ) echo "NYC" ;;
-    *ash* ) echo "ASH" ;;
-    *ams*|*amsterdam* ) echo "Amsterdam" ;;
-    *lim*|*limburg* ) echo "Limburg" ;;
-    *wash* ) echo "Washington" ;;
-    *cal*|*california* ) echo "California" ;;
-    *queensland*|*qld* ) echo "Queensland" ;;
-    * )
-      return 1
-      ;;
-  esac
-}
-
-detect_region_from_public_ip() {
-  local city=""
-  local region=""
-
-  if command -v curl >/dev/null 2>&1; then
-    city="$(curl -fsSL --max-time 5 https://ipinfo.io/city 2>/dev/null || true)"
-    region="$(curl -fsSL --max-time 5 https://ipinfo.io/region 2>/dev/null || true)"
-  fi
-
-  city="$(printf '%s' "$city" | tr -d '\r' | xargs || true)"
-  region="$(printf '%s' "$region" | tr -d '\r' | xargs || true)"
-
-  case "$(printf '%s %s' "$city" "$region" | tr '[:upper:]' '[:lower:]')" in
-    *san* ) echo "San" ;;
-    *frank*|*hesse* ) echo "Frank" ;;
-    *new\ york*|*nyc* ) echo "NYC" ;;
-    *ashburn*|*virginia* ) echo "ASH" ;;
-    *amsterdam* ) echo "Amsterdam" ;;
-    *limburg* ) echo "Limburg" ;;
-    *washington* ) echo "Washington" ;;
-    *california* ) echo "California" ;;
-    *queensland* ) echo "Queensland" ;;
-    * )
-      return 1
-      ;;
-  esac
-}
-
-detect_region() {
-  detect_region_from_hostname && return 0
-  detect_region_from_public_ip && return 0
-  echo "Unknown"
-}
-
 detect_snarkos_service() {
   local path=""
 
@@ -92,66 +37,44 @@ detect_snarkos_service() {
   return 1
 }
 
-detect_snarkos_execstart() {
-  local raw=""
-  raw="$(systemctl show -p ExecStart snarkos --value 2>/dev/null || true)"
-  printf '%s' "$raw"
-}
-
 detect_snarkos_binary() {
-  local raw bin
-
   if command -v snarkos >/dev/null 2>&1; then
     command -v snarkos
     return 0
   fi
-
-  raw="$(detect_snarkos_execstart)"
-  bin="$(printf '%s' "$raw" | sed -E 's/^\{?([^ ;]+).*/\1/' | xargs || true)"
-
-  if [ -n "$bin" ]; then
-    printf '%s' "$bin"
-    return 0
-  fi
-
   return 1
 }
 
-detect_snarkos_network() {
-  local raw network
-  raw="$(detect_snarkos_execstart)"
-
-  network="$(printf '%s' "$raw" | sed -nE 's/.*--network[= ]([^,; }]+).*/\1/p' | head -n1)"
-  if [ -n "$network" ]; then
-    printf '%s' "$network"
-    return 0
-  fi
-
-  case "$(printf '%s' "$raw" | tr '[:upper:]' '[:lower:]')" in
-    *mainnet* ) echo "mainnet" ;;
-    *testnet* ) echo "testnet" ;;
-    *canary* ) echo "canary" ;;
-    *beta* ) echo "beta" ;;
-    *devnet* ) echo "devnet" ;;
-    * ) echo "unknown" ;;
-  esac
-}
-
 INSTANCE_NAME="$(detect_instance)"
-REGION="$(detect_region)"
 SNARKOS_SERVICE="$(detect_snarkos_service || true)"
 SNARKOS_BINARY="$(detect_snarkos_binary || true)"
-SNARKOS_NETWORK="$(detect_snarkos_network)"
 
-read -r -p "Node provider [NirvanaLab]: " PROVIDER
+read -r -p "Network: " NETWORK
+while [ -z "${NETWORK}" ]; do
+  read -r -p "Network: " NETWORK
+done
+
+read -r -p "Metrics port [3000]: " METRICS_PORT
+METRICS_PORT="${METRICS_PORT:-3000}"
+
+read -r -p "Runtime (docker/systemd): " RUNTIME
+while [ "${RUNTIME}" != "docker" ] && [ "${RUNTIME}" != "systemd" ]; do
+  read -r -p "Runtime (docker/systemd): " RUNTIME
+done
+
+read -r -p "Provider [NirvanaLab]: " PROVIDER
 PROVIDER="${PROVIDER:-NirvanaLab}"
+
+read -r -p "Region: " REGION
+while [ -z "${REGION}" ]; do
+  read -r -p "Region: " REGION
+done
 
 INTERVAL_SECONDS="${INTERVAL_SECONDS:-30}"
 LISTEN_PORT="${LISTEN_PORT:-9400}"
 MTR_COUNT="${MTR_COUNT:-5}"
 MTR_MAX_HOPS="${MTR_MAX_HOPS:-30}"
 MTR_TIMEOUT_SECONDS="${MTR_TIMEOUT_SECONDS:-15}"
-METRICS_PORT="${METRICS_PORT:-3000}"
 
 PUBLIC_TARGETS="8.8.8.8|California|google,1.1.1.1|Queensland|cloudflare"
 CROSS_REGION_TARGETS="34.86.142.37|Washington|google"
@@ -175,7 +98,9 @@ EOF
 
 cat > "${CONFIG_FILE}" <<EOF
 protocol = "other"
+network = "${NETWORK}"
 metrics_port = ${METRICS_PORT}
+runtime = "${RUNTIME}"
 
 [binaries]
 "snarkos" = "${SNARKOS_SERVICE:-$SNARKOS_BINARY}"
@@ -246,12 +171,7 @@ provider = "latitude"
 EOF
 
 echo
+echo "Config written to: ${CONFIG_FILE}"
+echo "Env written to: ${ENV_FILE}"
 echo "Detected instance: ${INSTANCE_NAME}"
-echo "Detected region: ${REGION}"
-echo "Detected provider: ${PROVIDER}"
-echo "Detected snarkos service: ${SNARKOS_SERVICE:-not-found}"
-echo "Detected snarkos binary: ${SNARKOS_BINARY:-not-found}"
-echo "Detected snarkos network: ${SNARKOS_NETWORK}"
-echo
-echo "Written ${CONFIG_FILE}"
-echo "Written ${ENV_FILE}"
+echo "Snarkos target: ${SNARKOS_SERVICE:-$SNARKOS_BINARY}"
